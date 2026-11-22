@@ -5,7 +5,7 @@ export function field(config, current = config.default) {
   const attrs = {id, name:config.key, required:config.required !== false, 'aria-describedby': config.help ? `${id}-help` : undefined};
   const options = config.type === 'bool' ? [['true', '是'], ['false', '否']]
     : config.options?.map(option => [String(option), String(option)]);
-  const type = {int:'number', number:'number', date:'date', string:'text'}[config.type] || config.type;
+  const type = {int:'number', number:'number', date:'date', string:'text', datetime:'datetime-local'}[config.type] || config.type;
   const input = options
     ? el('select', attrs, options.map(([value, label]) => el('option', {value, selected:value === String(current)}, label)))
     : el('input', {...attrs, type, step:config.type === 'int' ? '1' : config.type === 'number' ? 'any' : undefined,

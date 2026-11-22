@@ -8,6 +8,7 @@ from src.domain.spec import SPEC
 from src.models.jobs import Delivery, Run, Schedule
 from src.models.source import Dataset
 from src.services.audit import record
+from src.services.rules import snapshot
 from src.utils.exports import write_report
 from src.utils.time import now
 
@@ -37,7 +38,7 @@ def materialize_due():
             else:
                 item.enabled = False
             db.add(Run(dataset_id=dataset_id, schedule_id=item.id, scheduled_at=due,
-                       name=item.name, params=params, author=item.author))
+                       name=item.name, params=params, rule_snapshot=snapshot(db), author=item.author))
 
 
 def claim():
@@ -58,14 +59,15 @@ def claim():
         job.attempt += 1
         job.lease_until = stamp + timedelta(minutes=3)
         records = db.get(Dataset, job.dataset_id).rows
-        return job.id, job.attempt, records, job.params
+        # 开跑时冻结的规则快照随租约传出，中断重跑沿用同一快照，不重复计分。
+        return job.id, job.attempt, records, job.rule_snapshot
 
 
 def execute(lease):
-    job_id, attempt, rows, params = lease
+    job_id, attempt, rows, rule_snapshot = lease
     result = export = failure = None
     try:
-        result = analyze(rows, params)
+        result = analyze(rows, rule_snapshot)
         export = write_report(job_id, attempt, result)
     except ValueError as error:
         failure = str(error)[:500]

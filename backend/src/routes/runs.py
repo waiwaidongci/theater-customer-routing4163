@@ -11,8 +11,8 @@ from src.models.identity import User
 from src.models.jobs import Run
 from src.models.source import Dataset
 from src.schemas.requests import ReviewRequest, RunRequest
+from src.services import rules
 from src.services.audit import record
-from src.services.validation import normalize_params
 from src.utils import views
 from src.utils.wakeup import wake
 
@@ -36,10 +36,13 @@ def create(body: RunRequest, db: Session = Depends(connection),
            actor: User = Depends(allow(Role.ADMIN, Role.ANALYST))):
     if not db.get(Dataset, body.dataset_id):
         raise HTTPException(404, '找不到指定的数据批次')
-    item = Run(name=body.name, dataset_id=body.dataset_id, params=normalize_params(body.params), author=actor.username)
+    # 开跑时冻结规则快照：验收中途发布的规则与补到的迟到记录不影响本次计分。
+    item = Run(name=body.name, dataset_id=body.dataset_id, params={},
+               rule_snapshot=rules.snapshot(db), author=actor.username)
     db.add(item)
     db.flush()
-    record(db, actor.username, 'analysis.queued', item.id, dataset_id=item.dataset_id)
+    record(db, actor.username, 'analysis.queued', item.id, dataset_id=item.dataset_id,
+           rules=[version['version'] for version in item.rule_snapshot])
     db.commit()
     wake()
     return views.run(item, detail=True)

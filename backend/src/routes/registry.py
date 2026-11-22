@@ -9,6 +9,7 @@ from src.domain.spec import SPEC
 from src.models.identity import User
 from src.models.source import Dataset
 from src.schemas.requests import Upload
+from src.services import rules
 from src.services.audit import record
 from src.services.datasets import save, template
 from src.services.validation import parse_rows
@@ -47,6 +48,8 @@ def details(dataset_id: int, offset: int = Query(0, ge=0), limit: int = Query(16
 def upload(body: Upload, db: Session = Depends(connection),
            actor: User = Depends(allow(Role.ADMIN, Role.ANALYST))):
     rows = parse_rows(body.csv_text)
+    # 缺规则或版本重叠的批次整批拒绝，不写入任何记录。
+    rules.ensure_coverable(rows, rules.published(db))
     item, created = save(db, body.name, body.filename, rows, actor.username)
     if created:
         record(db, actor.username, 'dataset.imported', item.id, rows=item.row_count)

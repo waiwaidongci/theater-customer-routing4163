@@ -1,9 +1,26 @@
 import csv
 import io
 import math
-from datetime import date
+from datetime import UTC, date, datetime
 from src.domain import analysis
+from src.domain.rules import BEIJING, display
 from src.domain.spec import SPEC
+
+
+def moment_cell(raw):
+    """到件时间：ISO 8601，不带时区按北京时间计，统一存带 +00:00 的 UTC ISO。"""
+    try:
+        value = datetime.fromisoformat(raw.replace('Z', '+00:00').replace(' ', 'T', 1))
+    except (AttributeError, ValueError):
+        raise ValueError from None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=BEIJING)
+    return value.astimezone(UTC).isoformat(timespec='seconds')
+
+
+def display_moment(stored):
+    """把库里的 UTC 时刻转回北京时间 ISO，供模板和下载使用。"""
+    return display(stored)
 
 
 def cell(field, raw):
@@ -26,6 +43,8 @@ def cell(field, raw):
                 raise ValueError
         elif kind == 'date':
             value = date.fromisoformat(str(value)).isoformat()
+        elif kind == 'datetime':
+            value = moment_cell(value)
         elif kind == 'bool':
             values = {'true': True, 'false': False, '1': True, '0': False, '是': True, '否': False}
             value = values[str(value).lower()]

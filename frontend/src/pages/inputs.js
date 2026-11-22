@@ -13,7 +13,9 @@ export async function inputs(route, refresh) {
   const error = feedback();
   const sample = button('下载示例 CSV', {class:'quiet',onClick:event=>handler(sample,error,()=>workspace.download('/template',spec.sample_name))(event)});
   const detail = selected && await workspace.getDataset(selected.id,route.offset);
-  const columns = spec.fields.map(field => ({key:field.key,label:field.label}));
+  const columns = spec.fields.map(field => field.type === 'datetime'
+    ? {key:field.key,label:field.label,render:row=>date(row[field.key])}
+    : {key:field.key,label:field.label});
   const preview = detail ? panel('批次明细', el('div',{class:'actions'},
     el('label',{for:'dataset-id',class:'sr'}, '选择数据批次'),
     el('select',{id:'dataset-id','aria-label':'选择数据批次',onChange:event=>{location.hash=`#inputs/${event.target.value}`;}},

@@ -11,7 +11,7 @@ import {date, value} from '../utils/format.js';
 export async function results(route, refresh) {
   const {spec,runs,datasets} = workspace;
   const id = route.id || runs[0]?.id;
-  if (!id) return panel(spec.pages[3],empty('还没有可查看的运行结果。','#run','前往运行'));
+  if (!id) return panel(spec.pages[4],empty('还没有可查看的运行结果。','#run','前往运行'));
   const job = await workspace.getRun(id);
   const source = datasets.find(item => item.id === job.dataset_id);
   const message = feedback();
@@ -38,12 +38,16 @@ export async function results(route, refresh) {
     result.charts.map(plot),
     (result.sections || []).map(item=>panel(item.title,p(item.text))),
     result.tables.map(item=>panel(item.title,table(item.columns,item.rows,{caption:item.title}))))
-    : panel(job.name,pill(STATUS[job.status],job.status),p(job.error,'feedback'),link('返回调整参数',`#run/${job.dataset_id}`,{class:'quiet'}));
-  const inputs = spec.params.map(param=>el('div',{},el('dt',{},param.label),el('dd',{},value(job.params[param.key]))));
+    : panel(job.name,pill(STATUS[job.status],job.status),p(job.error,'feedback'),link('返回分流验收',`#run/${job.dataset_id}`,{class:'quiet'}));
+  const snapshot = job.rule_snapshot || [];
+  const inputs = snapshot.length
+    ? snapshot.map(version=>el('div',{},el('dt',{},version.version),
+        el('dd',{},`${date(version.effective_at)} 生效 · 签发序号 ${version.issued_seq} · 阈值 ${version.params.min_similarity}`)))
+    : spec.params.map(param=>el('div',{},el('dt',{},param.label),el('dd',{},value(job.params[param.key]))));
   return el('div',{},el('div',{class:'two-col'},el('div',{class:'wide-panel'},analysis),
     el('aside',{class:'sidebar-panel'},panel('运行来源',history,
-      source && link(source.name,`#inputs/${source.id}`),p(date(job.finished_at),'subtle'),
-      el('dl',{class:'dictionary'},inputs)),
+      source && link(source.name,`#inputs/${source.id}`),p(date(job.finished_at),'subtle')),
+    panel(snapshot.length ? '开跑时冻结的规则快照' : '运行参数',el('dl',{class:'dictionary'},inputs)),
     result && panel(spec.decision, pill(REVIEW[job.review],job.review),
       link('打开复核记录',`#review/${job.id}`,{class:'quiet'})))));
 }

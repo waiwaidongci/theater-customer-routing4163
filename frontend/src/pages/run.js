@@ -8,9 +8,8 @@ import {workspace} from '../stores/workspace.js';
 import {button, el, link, p} from '../utils/dom.js';
 import {date} from '../utils/format.js';
 
-function runRequest(data, spec) {
-  return {dataset_id:Number(data.get('dataset_id')),name:data.get('name'),
-    params:Object.fromEntries(spec.params.map(param=>[param.key,data.get(param.key)]))};
+function runRequest(data) {
+  return {dataset_id:Number(data.get('dataset_id')),name:data.get('name')};
 }
 
 export async function runPage(route, refresh) {
@@ -28,16 +27,17 @@ export async function runPage(route, refresh) {
     el('label',{class:'check'},el('input',{name:'repeat_daily',type:'checkbox'}),'每日同一时间运行'), plan);
   const form = el('form',{class:'fields','data-testid':'run-form',
     onSubmit:handler(submit,error,async event=>{
-      const item = await workspace.start(runRequest(new FormData(event.target),spec));
+      const item = await workspace.start(runRequest(new FormData(event.target)));
       location.hash = `#results/${item.id}`;
     })}, datasetField(datasets,route.id),field({key:'name',label:'运行名称',type:'string',max_length:120},`样本${spec.run}`),
-    el('div',{class:'form-grid'},spec.params.map(param=>field(param))),el('div',{class:'actions'},submit),scheduleFields,error);
+    p('提交时冻结当前已发布的规则快照，各封来信按到件时刻采用当时生效的规则版本计分；验收中途发布的规则不影响本次运行。','subtle'),
+    el('div',{class:'actions'},submit),scheduleFields,error);
   plan.addEventListener('click',handler(plan,error,async()=>{
     if (!form.reportValidity()) return;
     const data = new FormData(form);
     const recipient = data.get('recipient'), start = data.get('first_at');
     if (!recipient?.trim() || !start) throw new Error('请填写收件团队和首次执行时间');
-    await workspace.schedule({...runRequest(data,spec),recipient,first_at:`${start}:00+08:00`,repeat_daily:data.has('repeat_daily')});
+    await workspace.schedule({...runRequest(data),recipient,first_at:`${start}:00+08:00`,repeat_daily:data.has('repeat_daily')});
     await refresh();
   }));
   const runList = table([

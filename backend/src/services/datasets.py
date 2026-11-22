@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from src.domain.demo import demo_rows
 from src.domain.spec import SPEC
 from src.models.source import Dataset
+from src.services.validation import display_moment
 
 
 def checksum(rows):
@@ -40,5 +41,7 @@ def template():
     writer = csv.DictWriter(buffer, fieldnames=fields, extrasaction='ignore')
     writer.writeheader()
     # The complete representative dataset also works as a reproducible import fixture.
-    writer.writerows(demo_rows())
+    # \u5230\u4ef6\u65f6\u95f4\u4ee5\u5317\u4eac\u65f6\u95f4\u5199\u56de\u6a21\u677f\uff0c\u91cd\u65b0\u5bfc\u5165\u540e\u6307\u7eb9\u4e0e\u6f14\u793a\u6279\u6b21\u4e00\u81f4\u3002
+    for row in demo_rows():
+        writer.writerow({**row, 'arrived_at': display_moment(row['arrived_at'])})
     return '\ufeff' + buffer.getvalue()

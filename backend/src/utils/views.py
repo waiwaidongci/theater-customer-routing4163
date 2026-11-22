@@ -13,8 +13,14 @@ def run(item, detail=False):
                  'scheduled_at': iso(item.scheduled_at), 'schedule_id': item.schedule_id,
                  'has_export': bool(item.export_file), 'error': item.error}
     if detail:
-        item_view.update(params=item.params, result=item.result, review_note=item.review_note)
+        item_view.update(params=item.params, result=item.result, review_note=item.review_note,
+                         rule_snapshot=item.rule_snapshot)
     return item_view
+
+
+def rule(item):
+    return {'version': item['version'], 'effective_at': item['effective_at'], 'issued_seq': item['issued_seq'],
+            'params': item['params'], 'author': item['author'], 'created_at': item['created_at']}
 
 
 def schedule(item):
